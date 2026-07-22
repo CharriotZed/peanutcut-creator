@@ -48,7 +48,6 @@ python3 "$SKILL_DIR/scripts/validate_skill.py" <生成的产物目录>
 - [小红书算法](references/platforms/xiaohongshu.md) — 小红书同上四层算法拆解
 - [视频号算法](references/platforms/shipinhao.md) — 视频号同上四层算法拆解
 - [百家号算法](references/platforms/baijiahao.md) — 百家号同上四层算法拆解
-- `references/methodology/topic-selection.md`（后续任务生成）— 跨平台通用的选题方法论
 - `references/methodology/monetization.md`（后续任务生成）— 变现路径拆解方法论
 - `references/skill-template/`（后续任务生成）— 产物 skill 的可填空模板（`*.tmpl` 文件，含各模块 `{{PLACEHOLDER}}`）
 
@@ -57,6 +56,8 @@ python3 "$SKILL_DIR/scripts/validate_skill.py" <生成的产物目录>
 **方法论内核（已就位，生成时的逻辑抄数据来源）：**
 
 - [标题方法论](references/methodology/title-craft.md) — 从 title-gen-v3 范例中抽出的跨平台/跨垂类标题判断逻辑（两型标题、矛盾拉满、靶子公共认知度、关键词锚定、动机匹配、开头呼应），平台专属的字数/标点/关键词位置规则在生成时从 `references/platforms/*.md` 叠加注入。
+- [选题方法论](references/methodology/topic-selection.md) — 跨平台/跨垂类选题判断逻辑（受众动机模型、比较优势定位、热点结合、可持续选题库、反直觉点提炼），垂类专属选题框架（如财经七维度）在生成时按垂类现产。
+- [文稿方法论](references/methodology/script-writing.md) — 跨平台/跨垂类文稿判断逻辑（Hook结构、节奏控制与信息密度、完播设计、互动引导、兑现标题承诺），时长与竖屏/横屏形态由 `references/platforms/*.md` 在生成时注入。
 
 ## 五阶段流程
 
