@@ -58,6 +58,7 @@ python3 "$SKILL_DIR/scripts/validate_skill.py" <生成的产物目录>
 - [标题方法论](references/methodology/title-craft.md) — 从 title-gen-v3 范例中抽出的跨平台/跨垂类标题判断逻辑（两型标题、矛盾拉满、靶子公共认知度、关键词锚定、动机匹配、开头呼应），平台专属的字数/标点/关键词位置规则在生成时从 `references/platforms/*.md` 叠加注入。
 - [选题方法论](references/methodology/topic-selection.md) — 跨平台/跨垂类选题判断逻辑（受众动机模型、比较优势定位、热点结合、可持续选题库、反直觉点提炼），垂类专属选题框架（如财经七维度）在生成时按垂类现产。
 - [文稿方法论](references/methodology/script-writing.md) — 跨平台/跨垂类文稿判断逻辑（Hook结构、节奏控制与信息密度、完播设计、互动引导、兑现标题承诺），时长与竖屏/横屏形态由 `references/platforms/*.md` 在生成时注入。
+- [封面方法论](references/methodology/cover-design.md) — 跨平台/跨垂类封面判断逻辑（1秒法则、视觉焦点与留白、大字文案4-8字、文案与标题互补、系列感固定排布、gpt-image-2 提示词写法），画幅尺寸与情绪-配色映射由 `references/platforms/*.md` 及本次确认的垂类在生成时注入。
 
 ## 五阶段流程
 
