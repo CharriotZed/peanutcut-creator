@@ -41,17 +41,19 @@ python3 "$SKILL_DIR/scripts/validate_skill.py" <生成的产物目录>
 - [标题生成方法论范例](references/exemplars/title-gen-v3.md) — 起标题前的文稿深度分析五步法，是所有产物「标题生成」模块的逻辑底座，每个生成的标题模块都要继承这套思路。
 - [B站财经账号范例](references/exemplars/bilibili-finance-video-skill.md) — 一个成熟的单垂类账号 skill 长什么样：人设锚定、跨工具适配写法、阶段化流程+人工确认点、统一输出文档、质量评估 loop、封面硬规则。这是本技能生成产物时要对标的质量与结构标准。
 
-**平台/方法论资源库（分批建设中，尚未生成完整文件，此处仅列出规划路径，暂不是可跳转链接）：**
+**平台算法知识库（已就位，生成产物时"抄数据"的原始素材来源）：**
 
 - [抖音算法](references/platforms/douyin.md) — 抖音推荐机制、核心指标权重、内容形态适配、冷启动与破圈打法
 - [B站算法](references/platforms/bilibili.md) — B站同上四层算法拆解
 - [小红书算法](references/platforms/xiaohongshu.md) — 小红书同上四层算法拆解
 - [视频号算法](references/platforms/shipinhao.md) — 视频号同上四层算法拆解
 - [百家号算法](references/platforms/baijiahao.md) — 百家号同上四层算法拆解
-- `references/methodology/monetization.md`（后续任务生成）— 变现路径拆解方法论
-- `references/skill-template/`（后续任务生成）— 产物 skill 的可填空模板（`*.tmpl` 文件，含各模块 `{{PLACEHOLDER}}`）
 
-上述资源随 Task4-11 逐步落地后，会在本节补上可跳转的链接。在这些资源尚未就位前，若研究到某平台但对应的 `references/platforms/<p>.md` 还不存在，如实告知用户"该平台的内置算法资料还未收录，本次将仅依赖联网研究结果"，不要假装读取了一个不存在的文件。
+阶段1研究某平台时，**必须先读取对应的 `references/platforms/<平台>.md`** 拿到该平台的四层算法拆解，作为联网研究的基础和校验依据；这些文件已全部就位，不要说"该平台资料还未收录"。仅当用户选的平台超出上述五个（抖音/B站/小红书/视频号/百家号）时，才如实告知该平台无内置算法资料、本次仅依赖联网研究。
+
+**产物模板（已就位）：**
+
+- `references/skill-template/` — 产物 skill 的可填空模板（`*.tmpl` 文件，含各模块 `{{PLACEHOLDER}}`），生成规范见下方「生成规范」章节。
 
 **方法论内核（已就位，生成时的逻辑抄数据来源）：**
 
