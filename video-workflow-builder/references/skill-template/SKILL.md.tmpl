@@ -1,0 +1,59 @@
+---
+name: {{ACCOUNT_SLUG}}-workflow
+description: {{NICHE}}垂类的专属视频创作工作流，覆盖选题、文稿、标题、封面全链路，服务于{{PLATFORMS}}账号。当用户说{{TRIGGER_WORDS}}时使用。
+---
+
+# {{ACCOUNT_SLUG}}-workflow
+
+这是一套为你的账号量身定制的视频创作工作流，覆盖从选题到文稿、标题、封面的完整链路，吃透了你所在平台的算法逻辑和垂类打法。
+
+## 账号人设
+
+{{PERSONA}}
+
+所有选题、文稿、标题、封面都要贴合这个人设的身份和口吻来写，不要写成一个没有身份感的通用账号。
+
+## 跨工具适配
+
+本技能同时支持 **Claude Code** 和 **Codex**（以及其它遵循 SKILL.md 规范的 agent）。下文提到具体工具名时，请按你当前所在的运行环境映射到等价能力，不要因为"没有叫这个名字的工具"就跳过步骤：
+
+- **联网搜索/抓取网页**：Claude Code 用 `WebSearch` / `WebFetch`；Codex 用其内置的联网搜索 / 网页读取能力（如 `web.search` / 浏览工具）。凡文中说"用 WebSearch / WebFetch"，即指"用当前环境的联网搜索与网页抓取工具"。若当前环境确实无联网能力，如实告知用户无法获取实时数据，退回内部知识作研究依据，不要用记忆里的旧数据冒充实时情报。
+- **写文件**：Claude Code 用 `Write` 工具；Codex 直接用其文件写入能力（或 `apply_patch`）。凡说"用 Write 工具生成某文件"，即指"用当前环境的文件写入能力落地该文件"。
+- **跑脚本**：两个环境都通过 shell 执行 `python3`。脚本路径见下方「脚本路径」——一律用技能目录的绝对路径，不要假设当前工作目录就是技能目录。
+
+### 脚本路径
+
+本技能自身的脚本随技能一起安装，位于技能目录下的 `scripts/`。**不要假设 shell 的当前工作目录是技能目录**（Codex/Claude Code 运行时 cwd 通常是用户项目目录）。运行脚本前先定位技能目录，用绝对路径调用。技能目录按环境查找：
+
+- Claude Code：`~/.claude/skills/{{ACCOUNT_SLUG}}-workflow`
+- Codex：`~/.codex/skills/{{ACCOUNT_SLUG}}-workflow`
+
+推荐用一句话解析出脚本根目录再调用，避免路径出错：
+
+```bash
+SKILL_DIR="$HOME/.claude/skills/{{ACCOUNT_SLUG}}-workflow"
+[ -d "$SKILL_DIR" ] || SKILL_DIR="$HOME/.codex/skills/{{ACCOUNT_SLUG}}-workflow"
+python3 "$SKILL_DIR/scripts/xxx.py"
+```
+
+下文示例为简洁起见写成 `scripts/xxx.py`，实际调用时请替换为 `"$SKILL_DIR/scripts/xxx.py"`。
+
+## 工作流程总览
+
+整个创作分四个模块，前后衔接成一条完整链路，中间有一个人工决策点，不要跳过：
+
+1. **[选题](references/topic-selection.md)** —— 先做这个，基于垂类框架和热点产出候选选题。
+2. **人工决策点**：选题产出后，停下来让用户选定一个方向（或提出调整），确认后才进入下一步。
+3. **[文稿](references/script-writing.md)** —— 基于选定选题，产出完整口播稿。
+4. **[标题](references/title-craft.md)** —— 基于文稿深度分析，产出爆款候选标题。
+5. **[封面](references/cover-design.md)** —— 以选定标题为大字方向，生成对应平台的封面。
+
+以上四个模块也**都可以单独触发**——比如你已经有现成的文稿只想起标题，或者已经定了标题只想生成封面，直接说明需求即可，不必每次都从选题走完整流程。
+
+若想了解这套工作流为什么是这样设计的（受众、差异化、变现路径、各平台适配依据），参见 [账号定位诊断](references/positioning.md)。
+
+## 定位速览
+
+{{POSITIONING}}
+
+完整的定位依据、受众画像、差异化打法、变现路径见 [账号定位诊断](references/positioning.md)。
