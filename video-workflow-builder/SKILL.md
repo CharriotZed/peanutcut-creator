@@ -43,8 +43,8 @@ python3 "$SKILL_DIR/scripts/validate_skill.py" <生成的产物目录>
 
 **平台/方法论资源库（分批建设中，尚未生成完整文件，此处仅列出规划路径，暂不是可跳转链接）：**
 
-- `references/platforms/douyin.md`（Task4 生成）— 抖音推荐机制、核心指标权重、内容形态适配、冷启动与破圈打法
-- `references/platforms/bilibili.md`（Task5 生成）— B站同上四层算法拆解
+- [抖音算法](references/platforms/douyin.md) — 抖音推荐机制、核心指标权重、内容形态适配、冷启动与破圈打法
+- [B站算法](references/platforms/bilibili.md) — B站同上四层算法拆解
 - `references/platforms/xiaohongshu.md`（Task6 生成）— 小红书同上四层算法拆解
 - `references/platforms/shipinhao.md`（Task7 生成）— 视频号同上四层算法拆解
 - `references/platforms/baijiahao.md`（Task8 生成）— 百家号同上四层算法拆解
