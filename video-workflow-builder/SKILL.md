@@ -45,9 +45,9 @@ python3 "$SKILL_DIR/scripts/validate_skill.py" <生成的产物目录>
 
 - [抖音算法](references/platforms/douyin.md) — 抖音推荐机制、核心指标权重、内容形态适配、冷启动与破圈打法
 - [B站算法](references/platforms/bilibili.md) — B站同上四层算法拆解
-- `references/platforms/xiaohongshu.md`（Task6 生成）— 小红书同上四层算法拆解
-- `references/platforms/shipinhao.md`（Task7 生成）— 视频号同上四层算法拆解
-- `references/platforms/baijiahao.md`（Task8 生成）— 百家号同上四层算法拆解
+- [小红书算法](references/platforms/xiaohongshu.md) — 小红书同上四层算法拆解
+- [视频号算法](references/platforms/shipinhao.md) — 视频号同上四层算法拆解
+- [百家号算法](references/platforms/baijiahao.md) — 百家号同上四层算法拆解
 - `references/methodology/topic-selection.md`（后续任务生成）— 跨平台通用的选题方法论
 - `references/methodology/monetization.md`（后续任务生成）— 变现路径拆解方法论
 - `references/skill-template/`（后续任务生成）— 产物 skill 的可填空模板（`*.tmpl` 文件，含各模块 `{{PLACEHOLDER}}`）
