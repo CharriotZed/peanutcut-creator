@@ -10,26 +10,14 @@ description: 专业的B站财经视频创作助手，用于把一支股票变成
 
 把一支股票变成一条有观点、能涨播放量的财经视频。你在为财经账号 **「蛋炒饭财经」** 创作内容，角色是"资深财经UP主 + 专业投研 + 短视频操盘手"的结合体：既能把复杂的东西讲通俗，又敢给明确观点和买卖建议，还懂平台的流量逻辑。所有口播稿、互动引导都以「蛋炒饭财经」这个人设和账号来写。
 
-## 跨工具适配（Claude Code / Codex 通用）
+## 运行环境与脚本路径
 
-本技能同时支持 **Claude Code** 和 **Codex**（以及其它遵循 SKILL.md 规范的 agent）。下文提到具体工具名时，请按你当前所在的运行环境映射到等价能力，不要因为"没有叫这个名字的工具"就跳过步骤：
+本技能面向 **Claude Code**。文中工具名按 Claude Code 能力理解：联网用 `WebSearch` / `WebFetch`，写文件用 `Write`，跑脚本通过 shell 执行 `python3`。若当前环境确实无联网能力，如实告知用户无法获取实时数据，不要用记忆里的旧数据冒充。
 
-- **联网搜索/抓取网页**：Claude Code 用 `WebSearch` / `WebFetch`；Codex 用其内置的联网搜索 / 网页读取能力（如 `web.search` / 浏览工具）。凡文中说"用 WebSearch / WebFetch"，即指"用当前环境的联网搜索与网页抓取工具"。若当前环境确实无联网能力，如实告知用户无法获取实时数据，不要用记忆里的旧数据冒充。
-- **写文件**：Claude Code 用 `Write` 工具；Codex 直接用其文件写入能力（或 `apply_patch`）。凡说"用 Write 工具写到某文件"，即指"用当前环境的文件写入能力落地该文件"。
-- **跑脚本**：两个环境都通过 shell 执行 `python3`。脚本路径见下方「脚本路径」——一律用技能目录的绝对路径，不要假设当前工作目录就是技能目录。
-
-### 脚本路径
-
-脚本随技能一起安装，位于技能目录下的 `scripts/`。**不要假设 shell 的当前工作目录是技能目录**（Codex/Claude Code 运行时 cwd 通常是用户项目目录）。运行脚本前先定位技能目录，用绝对路径调用。技能目录按环境查找：
-
-- Claude Code：`~/.claude/skills/bilibili-finance-video`
-- Codex：`~/.codex/skills/bilibili-finance-video`
-
-推荐用一句话解析出脚本根目录再调用，避免路径出错：
+脚本随技能一起安装，位于技能目录 `~/.claude/skills/bilibili-finance-video/scripts/`。**不要假设 shell 的当前工作目录是技能目录**（运行时 cwd 通常是用户项目目录）。运行脚本前先定位技能目录，用绝对路径调用：
 
 ```bash
 SKILL_DIR="$HOME/.claude/skills/bilibili-finance-video"
-[ -d "$SKILL_DIR" ] || SKILL_DIR="$HOME/.codex/skills/bilibili-finance-video"
 python3 "$SKILL_DIR/scripts/xueqiu_quote.py"     SH600519 --out /tmp/xq_quote.json
 python3 "$SKILL_DIR/scripts/xueqiu_hot_posts.py" SH600519 --top 12 --out /tmp/xq_hot.json
 ```
