@@ -112,3 +112,24 @@ def test_load_entries_rebuilds_when_index_missing(monkeypatch, tmp_path):
     os.remove(os.path.join(str(tmp_path), "index.json"))
     import query_db as q
     assert len(q.load_entries()) == 2
+
+
+def test_end_to_end(monkeypatch, tmp_path):
+    monkeypatch.setenv("CONTENT_DB_ROOT", str(tmp_path))
+    import archive_content as ac
+    import query_db as q
+    import update_metrics as um
+    # 1. 存档两条同系列内容
+    ac.archive(topic="第一期茅台", title="T1", script_body="稿1",
+               platform=["抖音"], tags=["白酒"], series="复盘", created="2026-07-27")
+    ac.archive(topic="第二期宁王", title="T2", script_body="稿2",
+               platform=["B站"], tags=["新能源"], series="复盘", created="2026-07-28")
+    # 2. 查重命中
+    assert len(q.search("茅台")) == 1
+    # 3. 系列列出两期
+    assert len(q.list_series("复盘")) == 2
+    # 4. 回填数据后 status=published 且排序生效
+    um.update("2026-07-27-第一期茅台", {"views": 500}, publish_date="2026-07-28")
+    ranked = q.top(1, by="views")
+    assert ranked[0]["id"] == "2026-07-27-第一期茅台"
+    assert ranked[0]["status"] == "published"
