@@ -234,8 +234,10 @@ python3 "$SKILL_DIR/scripts/validate_skill.py" <生成的产物目录>
 
 **配置脚本**：
 
-- 无条件复制进产物：`generate_cover.py`（封面生成脚本）、`.env.example`（密钥占位模板）、`.gitignore`（确保真实 `.env` 不被提交）
+- 无条件复制进产物：`generate_cover.py`（封面生成脚本）、`content_db.py` / `archive_content.py` / `query_db.py` / `update_metrics.py`（内容资产库脚本，产物借此结构化存档与索引每次产出的内容）、`.env.example`（密钥占位模板）、`.gitignore`（确保真实 `.env` 不被提交）
 - 视垂类需要，额外配置抓取实时数据的脚本：**判断标准是该垂类是否需要活数据**——财经类（行情/财报）、热点追踪类（实时新闻/热搜）、榜单类（销量榜/播放榜）这三类需要；纯知识科普、故事叙事、生活记录等垂类通常不需要，跳过这一步即可
+
+**内容资产库（每个产物必带）**：产物要能把每次产出的内容结构化沉淀到独立于 skill 的长期数据库 `~/.claude|.codex/content-db/<账号slug>/`。落地方式：把 `content_db.py`/`archive_content.py`/`query_db.py`/`update_metrics.py` 复制进产物 `scripts/`（脚本从自身路径推导账号 slug 与数据根，无需改写）；产物的选题模块开头查库去重与找系列、文稿模块末尾自动存档、SKILL.md 说明回填与查库方式——这三处已在模板中就位，填模板时不要删。数据独立存放，重装产物 skill 不影响历史内容。
 
 **密钥处理（安全红线）**：产物用到的真实 API key，只能写进产物目录下、被 `.gitignore` 排除的真实 `.env` 文件里，由用户自己配置或本技能在生成时以环境变量形式写入该 git-ignored 文件；随技能一起提交/追踪的 `.env.example` 永远只放占位符（如 `LLM_GATEWAY_API_KEY=your_key_here`）。任何真实密钥值都不允许写进 SKILL.md 或任何会被版本控制追踪的文件。
 
@@ -254,4 +256,5 @@ python3 scripts/validate_skill.py <产物目录>
 - 产物的标题生成模块必须继承 [title-gen-v3](references/exemplars/title-gen-v3.md) 的核心逻辑：先做文稿深度分析（主题提炼、受众心声提取、比较优势、核心矛盾），再套标题公式，不能跳过分析直接套模板起标题。
 - 产物覆盖的每一个平台，都必须体现该平台的**推荐机制、核心指标与权重、内容形态适配、冷启动与破圈**这四层算法拆解，不能只泛泛提一句"该平台流量大"。
 - 封面生成脚本（`generate_cover.py`）及产物任何文件中，**绝不硬编码真实 API key**——密钥只能来自环境变量或用户自己配置的 git-ignored `.env`。
+- 产物必须具备可运行的内容资产库能力：`content_db.py`/`archive_content.py`/`query_db.py`/`update_metrics.py` 四个脚本齐全并能正确读写 `content-db/<slug>/`，选题模块查库去重、文稿模块自动存档两处衔接不能缺失。
 - 产物必须通过 `scripts/validate_skill.py` 校验，且不遗留任何已知问题。
