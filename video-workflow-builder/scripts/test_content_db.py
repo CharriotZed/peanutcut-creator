@@ -72,3 +72,43 @@ def test_archive_duplicate_id_raises(monkeypatch, tmp_path):
     with pytest.raises(FileExistsError):
         ac.archive(topic="同题", title="T", script_body="a",
                    platform=["抖音"], tags=[], created="2026-07-27")
+
+
+def _seed(tmp_path, monkeypatch):
+    monkeypatch.setenv("CONTENT_DB_ROOT", str(tmp_path))
+    import archive_content as ac
+    ac.archive(topic="茅台跌停复盘", title="茅台三个信号", script_body="a",
+               platform=["抖音"], tags=["白酒"], series="复盘", created="2026-07-27")
+    ac.archive(topic="宁德时代估值", title="宁王还能买吗", script_body="b",
+               platform=["B站"], tags=["新能源"], series="复盘", created="2026-07-28")
+
+
+def test_search_matches_topic_and_tags(monkeypatch, tmp_path):
+    _seed(tmp_path, monkeypatch)
+    import query_db as q
+    hits = q.search("白酒")
+    assert len(hits) == 1 and hits[0]["topic"] == "茅台跌停复盘"
+
+
+def test_list_series_sorted(monkeypatch, tmp_path):
+    _seed(tmp_path, monkeypatch)
+    import query_db as q
+    members = q.list_series("复盘")
+    assert [m["created"] for m in members] == ["2026-07-27", "2026-07-28"]
+
+
+def test_top_by_views(monkeypatch, tmp_path):
+    _seed(tmp_path, monkeypatch)
+    import update_metrics as um
+    um.update("2026-07-28-宁德时代估值", {"views": 9000}, publish_date="2026-07-29")
+    um.update("2026-07-27-茅台跌停复盘", {"views": 100}, publish_date="2026-07-28")
+    import query_db as q
+    ranked = q.top(2, by="views")
+    assert ranked[0]["id"] == "2026-07-28-宁德时代估值"
+
+
+def test_load_entries_rebuilds_when_index_missing(monkeypatch, tmp_path):
+    _seed(tmp_path, monkeypatch)
+    os.remove(os.path.join(str(tmp_path), "index.json"))
+    import query_db as q
+    assert len(q.load_entries()) == 2
