@@ -93,3 +93,23 @@
 正文之后附一句**完播设计说明**：这份文稿用了哪种留人手段（悬念递进/进度锚点/"然后呢"感），分别落在哪一段。
 
 文稿产出后不必强制停下等待确认，文稿是整条创作链路的最后一步，产出即完成本次工作流。
+
+## 存档到内容库（文稿定稿后自动执行）
+
+文稿定稿后,自动把本次内容写入长期内容库(状态标记为待发布),供以后去重、追系列、复盘数据:
+
+```bash
+SKILL_DIR="$HOME/.claude/skills/{{ACCOUNT_SLUG}}-workflow"
+[ -d "$SKILL_DIR" ] || SKILL_DIR="$HOME/.codex/skills/{{ACCOUNT_SLUG}}-workflow"
+python3 "$SKILL_DIR/scripts/archive_content.py" \
+  --topic "本次最终选题" \
+  --title "本次选定标题" \
+  --platform "{{PLATFORMS}}" \
+  --tags "标签1,标签2" \
+  --series "系列名(无则省略此项)" \
+  --script - <<'SCRIPT_EOF'
+（把完整口播稿正文粘到这里）
+SCRIPT_EOF
+```
+
+存档成功后告诉用户:内容已存入库、当前状态为「待发布」;发布后可随时说"回填 XX 的数据"来补播放/点赞等指标(见 SKILL.md「内容资产库」一节)。若脚本执行失败,如实告知用户本次未存档,不要谎报成功。
