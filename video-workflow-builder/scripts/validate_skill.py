@@ -37,6 +37,15 @@ def validate_skill_dir(path):
         if not os.path.isfile(os.path.join(path, rel)):
             problems.append("SKILL.md links missing file: %s" % rel)
 
+    required_scripts = [
+        "content_db.py", "archive_content.py", "query_db.py",
+        "update_metrics.py", "generate_cover.py",
+    ]
+    scripts_dir = os.path.join(path, "scripts")
+    for name in required_scripts:
+        if not os.path.isfile(os.path.join(scripts_dir, name)):
+            problems.append("missing required script: scripts/%s" % name)
+
     return problems
 
 
