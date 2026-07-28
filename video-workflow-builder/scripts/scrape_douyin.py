@@ -320,6 +320,149 @@ def collect_video_links(page, expected_count=0):
     return list(collected)
 
 
+def scrape_video(page, video_url):
+    """打开视频详情页，提取视频级数据。"""
+    video = {
+        "video_id": "",
+        "url": video_url,
+        "title": "",
+        "cover_url": "",
+        "duration_sec": 0,
+        "publish_time": "",
+        "views": 0,
+        "likes": 0,
+        "comments_count": 0,
+        "shares": 0,
+        "hashtags": [],
+        "error": "",
+    }
+
+    video_id_match = re.search(r"/video/(\d+)", video_url)
+    video["video_id"] = video_id_match.group(1) if video_id_match else video_url.rsplit("/", 1)[-1]
+
+    try:
+        page.goto(video_url, wait_until="domcontentloaded", timeout=30000)
+        time.sleep(4)  # 等 JS 渲染
+    except Exception as e:
+        video["error"] = "页面加载失败: %s" % str(e)
+        return video
+
+    # 标题 / 描述
+    try:
+        title_el = page.locator('[data-e2e="video-detail-title"], h1[class*="title"], [class*="video-info"] span, [class*="desc"]').first
+        if title_el.is_visible(timeout=5000):
+            video["title"] = title_el.inner_text().strip()
+    except Exception:
+        pass
+
+    # 如果标题没抓到，尝试从页面 title 提取
+    if not video["title"]:
+        try:
+            video["title"] = page.title()
+        except Exception:
+            pass
+
+    # 发布时间
+    try:
+        time_el = page.locator('[data-e2e="video-publish-time"], span:has-text("天前"), span:has-text("小时前"), span:has-text("分钟前"), span:has-text("秒前"), span:has-text("年"), span:has-text("月"), [class*="publish"]').first
+        if time_el.is_visible(timeout=3000):
+            video["publish_time"] = time_el.inner_text().strip()
+    except Exception:
+        pass
+
+    # 互动数据：点赞、评论、分享
+    # 抖音视频详情页的互动数据通常在视频右侧或底部
+    action_items = page.locator('[data-e2e="video-action"] span, [class*="action"] span, [class*="interact"] span').all()
+    for item in action_items:
+        try:
+            text = item.inner_text().strip()
+        except Exception:
+            continue
+        num_match = re.search(r"(\d[\d,.]*[亿万]?)", text)
+        if not num_match:
+            continue
+        count = _parse_count(num_match.group(1))
+        if "点赞" in text or "赞" in text:
+            video["likes"] = count
+        elif "评论" in text:
+            video["comments_count"] = count
+        elif "分享" in text or "转发" in text:
+            video["shares"] = count
+
+    # 如果 action_items 方式失败，用全页面文本正则兜底
+    full_text = page.inner_text("body") if hasattr(page, "inner_text") else ""
+    if not video["likes"] and not video["comments_count"] and full_text:
+        for pattern, key in [
+            (r"(\d[\d,.]*[亿万]?)\s*赞", "likes"),
+            (r"(\d[\d,.]*[亿万]?)\s*评论", "comments_count"),
+            (r"(\d[\d,.]*[亿万]?)\s*分享", "shares"),
+        ]:
+            m = re.search(pattern, full_text)
+            if m and not video.get(key):
+                video[key] = _parse_count(m.group(1))
+
+    # 播放量 — 通常不在详情页直接显示，需要在主页列表页抓
+    # 尝试从页面任何数据显示位置提取
+    play_match = re.search(r"(\d[\d,.]*[亿万]?)\s*(?:次播放|播放|观看)", full_text) if full_text else None
+    if play_match:
+        video["views"] = _parse_count(play_match.group(1))
+
+    # 话题标签
+    try:
+        hashtag_els = page.locator('a[href*="/hashtag/"], span[class*="hashtag"], span:has-text("#")').all()
+        for el in hashtag_els:
+            try:
+                tag_text = el.inner_text().strip()
+                if tag_text and (tag_text.startswith("#") or "hashtag" in str(el.get_attribute("href") or "")):
+                    video["hashtags"].append(tag_text.replace("#", "").strip())
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    return video
+
+
+def scrape_videos_batch(page, video_urls, json_path, max_comments=20):
+    """批量抓取视频数据，每抓完一个立即写入 JSON 文件（断点续抓）。"""
+    # 加载已有数据
+    if os.path.isfile(json_path):
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    else:
+        data = {"account": {}, "videos": []}
+
+    existing_ids = {v["video_id"] for v in data.get("videos", [])}
+    pending_urls = [u for u in video_urls if re.search(r"/video/(\d+)", u).group(1) not in existing_ids if re.search(r"/video/(\d+)", u)]
+
+    print("待抓取: %d 个视频（已跳过 %d 个已有数据）" % (len(pending_urls), len(existing_ids)))
+
+    for i, url in enumerate(pending_urls):
+        print("\n[%d/%d] %s" % (i + 1, len(pending_urls), url))
+        video = scrape_video(page, url)
+
+        # 如果有评论需求，追加抓取（评论抓取函数将在后续任务中接入）
+        if max_comments > 0 and not video.get("error"):
+            video["top_comments"] = []
+        else:
+            video["top_comments"] = []
+
+        data["videos"].append(video)
+
+        # 立即刷盘
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        print("  点赞: %s | 评论: %s | 分享: %s | 评论抓取: %d条" % (
+            video["likes"], video["comments_count"], video["shares"], len(video.get("top_comments", []))
+        ))
+
+        # 间隔
+        time.sleep(2 + (__import__("random").random() * 1.5))
+
+    return data
+
+
 def main():
     args = parse_args()
     script_dir = os.path.dirname(os.path.abspath(__file__))
