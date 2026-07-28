@@ -251,6 +251,75 @@ def scrape_account(page, url):
     return account
 
 
+def collect_video_links(page, expected_count=0):
+    """在用户主页滚动加载全部作品，返回视频详情页 URL 列表。"""
+    print("正在滚动加载作品列表...")
+
+    # 确保在"作品"Tab
+    try:
+        page.locator('text=作品').first.click(timeout=3000)
+    except Exception:
+        pass
+    time.sleep(2)
+
+    collected = set()
+    scroll_attempts = 0
+    max_scrolls = 200  # 安全上限
+    last_count = 0
+    no_new_count = 0
+
+    while scroll_attempts < max_scrolls:
+        # 收集当前页面可见的视频链接
+        links = page.locator('a[href*="/video/"]').all()
+        for link in links:
+            try:
+                href = link.get_attribute("href")
+                if href and "/video/" in href:
+                    full_url = "https://www.douyin.com" + href.split("?")[0] if href.startswith("/") else href.split("?")[0]
+                    collected.add(full_url)
+            except Exception:
+                continue
+
+        # 也尝试通过图片父级链接收集
+        img_links = page.locator('img[src*="douyinpic.com"], img[src*="dyci"]').all()
+        for img in img_links:
+            try:
+                parent_a = img.locator("xpath=ancestor::a")
+                if parent_a.count() > 0:
+                    href = parent_a.first.get_attribute("href")
+                    if href and "/video/" in href:
+                        full_url = "https://www.douyin.com" + href.split("?")[0] if href.startswith("/") else href.split("?")[0]
+                        collected.add(full_url)
+            except Exception:
+                continue
+
+        current_count = len(collected)
+        print("  已收集 %d 个视频链接..." % current_count, end="\r")
+
+        if current_count == last_count:
+            no_new_count += 1
+        else:
+            no_new_count = 0
+            last_count = current_count
+
+        # 如果预期数量和收集数量匹配，停止
+        if expected_count > 0 and current_count >= expected_count:
+            break
+
+        # 连续 5 次无新链接则停止
+        if no_new_count >= 5:
+            break
+
+        # 向下滚动
+        page.evaluate("window.scrollBy(0, 800)")
+        time.sleep(1.5)
+        scroll_attempts += 1
+
+    print("")
+    print("收集完成: %d 个视频链接" % len(collected))
+    return list(collected)
+
+
 def main():
     args = parse_args()
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -272,6 +341,9 @@ def main():
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump({"account": account, "videos": []}, f, ensure_ascii=False, indent=2)
         print("账号数据已保存:", json_path)
+
+        video_urls = collect_video_links(page, account.get("video_count", 0))
+        print("共收集 %d 个视频" % len(video_urls))
 
     finally:
         context.close()
