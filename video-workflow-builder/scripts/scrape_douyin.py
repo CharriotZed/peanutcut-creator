@@ -115,6 +115,142 @@ def save_session(context, session_path):
     print("session 已保存:", session_path)
 
 
+def _parse_count(text):
+    """将 '1.2万' / '1234' 解析为整数。"""
+    if not text:
+        return 0
+    text = text.strip().replace(",", "").replace(" ", "")
+    if "亿" in text:
+        return int(float(text.replace("亿", "")) * 100000000)
+    if "万" in text:
+        return int(float(text.replace("万", "")) * 10000)
+    try:
+        return int(text)
+    except ValueError:
+        return 0
+
+
+def _wait_for_text(page, selectors, timeout=10000):
+    """尝试一组选择器，返回第一个有可见文本的元素文本。"""
+    for sel in selectors:
+        try:
+            el = page.locator(sel).first
+            el.wait_for(state="visible", timeout=timeout)
+            text = el.inner_text().strip()
+            if text:
+                return text
+        except Exception:
+            continue
+    return ""
+
+
+def scrape_account(page, url):
+    """导航到用户主页，提取账号级数据。"""
+    print("正在抓取主页数据:", url)
+    page.goto(url, wait_until="domcontentloaded", timeout=30000)
+    time.sleep(5)  # 等 JS 渲染完成
+
+    account = {
+        "nickname": "",
+        "douyin_id": "",
+        "avatar_url": "",
+        "signature": "",
+        "follower_count": 0,
+        "following_count": 0,
+        "total_likes": 0,
+        "video_count": 0,
+        "verified_badge": None,
+        "url": url,
+        "fetched_at": datetime.datetime.now().isoformat(),
+    }
+
+    # 昵称
+    account["nickname"] = _wait_for_text(page, [
+        '[data-e2e="user-info-name"]',
+        'h1[class*="name"]',
+        '[class*="profile"] h1',
+        'span[class*="nickname"]',
+    ], timeout=5000)
+
+    # 抖音号
+    account["douyin_id"] = _wait_for_text(page, [
+        '[data-e2e="user-info-id"]',
+        'span[class*="short-id"]',
+        'text=/抖音号:.*/',
+    ], timeout=3000)
+    if account["douyin_id"]:
+        account["douyin_id"] = account["douyin_id"].replace("抖音号:", "").replace("抖音号：", "").strip()
+
+    # 简介
+    account["signature"] = _wait_for_text(page, [
+        '[data-e2e="user-info-desc"]',
+        'span[class*="signature"]',
+        'p[class*="desc"]',
+    ], timeout=3000)
+
+    # 粉丝数、关注数、获赞数 —— 使用通用的统计项选择器
+    stat_items = page.locator('[data-e2e="user-info-stats"] span, [class*="stats"] span, [class*="count"]').all()
+    stat_texts = []
+    for item in stat_items:
+        try:
+            text = item.inner_text().strip()
+            if text:
+                stat_texts.append(text)
+        except Exception:
+            continue
+
+    # 查找"获赞"、"关注"、"粉丝"附近的数字
+    # 抖音主页的统计数据通常在一行中显示
+    all_text = page.locator('[data-e2e="user-info-stats"], [class*="stats"], [class*="user-info"]').first.inner_text() if page.locator('[data-e2e="user-info-stats"], [class*="stats"], [class*="user-info"]').count() > 0 else ""
+
+    # 用模式匹配提取数字
+    follower_match = re.search(r"(\d[\d,.]*[亿万]?)\s*(?:粉丝|获赞)", all_text)
+    if not follower_match:
+        follower_match = re.search(r"(?:粉丝|获赞)\s*:?\s*(\d[\d,.]*[亿万]?)", all_text)
+
+    # 遍历 stat_texts 按位置推断
+    # 典型结构: "获赞 X  关注 Y  粉丝 Z" 或 "X 获赞  Y 关注  Z 粉丝"
+    for i, t in enumerate(stat_texts):
+        if "获赞" in t or "赞" in t:
+            # 数字可能在前面或后面
+            num = re.search(r"(\d[\d,.]*[亿万]?)", t)
+            if num:
+                account["total_likes"] = _parse_count(num.group(1))
+        elif "关注" in t:
+            num = re.search(r"(\d[\d,.]*[亿万]?)", t)
+            if num:
+                account["following_count"] = _parse_count(num.group(1))
+        elif "粉丝" in t:
+            num = re.search(r"(\d[\d,.]*[亿万]?)", t)
+            if num:
+                account["follower_count"] = _parse_count(num.group(1))
+
+    # 作品数
+    video_count_text = _wait_for_text(page, [
+        '[data-e2e="user-tab-video"] span',
+        'text=/作品.*\d/',
+    ], timeout=3000)
+    count_match = re.search(r"(\d[\d,.]*[亿万]?)", video_count_text or "")
+    if count_match:
+        account["video_count"] = _parse_count(count_match.group(1))
+
+    # 认证标识
+    try:
+        badge = page.locator('[data-e2e="verified-badge"], [class*="verified"], [class*="certify"]').first
+        if badge.is_visible(timeout=2000):
+            account["verified_badge"] = badge.inner_text().strip()
+    except Exception:
+        pass
+
+    print("账号: %s (粉丝: %s, 获赞: %s, 作品: %s)" % (
+        account["nickname"],
+        account["follower_count"],
+        account["total_likes"],
+        account["video_count"],
+    ))
+    return account
+
+
 def main():
     args = parse_args()
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -129,6 +265,13 @@ def main():
         # 等待用户查看浏览器，确认登录成功
         print("登录完成，浏览器将保持打开。请在终端继续操作。")
         input("按 Enter 开始抓取数据...")
+
+        account = scrape_account(page, args.url)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        json_path = os.path.join(data_dir, "%s-douyin-account.json" % timestamp)
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump({"account": account, "videos": []}, f, ensure_ascii=False, indent=2)
+        print("账号数据已保存:", json_path)
 
     finally:
         context.close()
