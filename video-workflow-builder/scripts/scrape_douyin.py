@@ -552,6 +552,235 @@ def scrape_videos_batch(page, video_urls, json_path, max_comments=20):
     return data
 
 
+def generate_report(account, videos, output_path):
+    """生成 Markdown 分析报告。"""
+    lines = []
+    lines.append("# 抖音账号分析报告")
+    lines.append("")
+    lines.append("**生成时间**: %s" % datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    lines.append("**主页链接**: %s" % account.get("url", ""))
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    # 1. 账号概览
+    lines.append("## 一、账号概览")
+    lines.append("")
+    lines.append("| 指标 | 数值 |")
+    lines.append("|------|------|")
+    lines.append("| 昵称 | %s |" % account.get("nickname", "-"))
+    lines.append("| 抖音号 | %s |" % account.get("douyin_id", "-"))
+    lines.append("| 粉丝数 | %s |" % _format_count(account.get("follower_count", 0)))
+    lines.append("| 获赞数 | %s |" % _format_count(account.get("total_likes", 0)))
+    lines.append("| 关注数 | %s |" % _format_count(account.get("following_count", 0)))
+    lines.append("| 作品数 | %d |" % account.get("video_count", 0))
+    if account.get("verified_badge"):
+        lines.append("| 认证 | %s |" % account["verified_badge"])
+    if account.get("signature"):
+        lines.append("| 简介 | %s |" % account["signature"])
+    lines.append("")
+
+    # 2. 基础健康度
+    lines.append("## 二、基础健康度")
+    lines.append("")
+
+    follower_count = account.get("follower_count", 0)
+    total_likes = account.get("total_likes", 0)
+    video_count = account.get("video_count", 1)
+
+    like_fan_ratio = (total_likes / follower_count) if follower_count > 0 else 0
+    lines.append("- **赞粉比**: %.2f (%s获赞/%s粉丝)" % (like_fan_ratio, _format_count(total_likes), _format_count(follower_count)))
+    lines.append("  - > 10：互动热度极高")
+    lines.append("  - 5~10：良性互动")
+    lines.append("  - < 5：互动偏低，需提升内容吸引力")
+
+    avg_likes = sum(v.get("likes", 0) for v in videos) / max(len(videos), 1)
+    lines.append("- **平均点赞**: %s / 条" % _format_count(int(avg_likes)))
+    lines.append("- **平均评论**: %s / 条" % _format_count(int(sum(v.get("comments_count", 0) for v in videos) / max(len(videos), 1))))
+    lines.append("")
+
+    # 3. 视频表现排名
+    lines.append("## 三、视频表现 Top 10")
+    lines.append("")
+
+    sorted_by_likes = sorted(videos, key=lambda v: v.get("likes", 0), reverse=True)[:10]
+    lines.append("### 按点赞排名")
+    lines.append("")
+    lines.append("| # | 标题 | 点赞 | 评论 | 分享 | 发布时间 |")
+    lines.append("|---|---|---|---|---|---|")
+    for i, v in enumerate(sorted_by_likes[:10]):
+        title = (v.get("title") or v.get("video_id") or "-")[:40]
+        lines.append("| %d | %s | %s | %s | %s | %s |" % (
+            i + 1, title,
+            _format_count(v.get("likes", 0)),
+            _format_count(v.get("comments_count", 0)),
+            _format_count(v.get("shares", 0)),
+            v.get("publish_time", "-"),
+        ))
+    lines.append("")
+
+    sorted_by_comments = sorted(videos, key=lambda v: v.get("comments_count", 0), reverse=True)[:10]
+    lines.append("### 按评论排名")
+    lines.append("")
+    lines.append("| # | 标题 | 评论 | 点赞 | 发布时间 |")
+    lines.append("|---|---|---|---|---|")
+    for i, v in enumerate(sorted_by_comments[:10]):
+        title = (v.get("title") or v.get("video_id") or "-")[:40]
+        lines.append("| %d | %s | %s | %s | %s |" % (
+            i + 1, title,
+            _format_count(v.get("comments_count", 0)),
+            _format_count(v.get("likes", 0)),
+            v.get("publish_time", "-"),
+        ))
+    lines.append("")
+
+    # 4. 内容特征
+    lines.append("## 四、内容特征分析")
+    lines.append("")
+
+    # 话题标签统计
+    tag_counts = {}
+    for v in videos:
+        for tag in v.get("hashtags", []):
+            tag_counts[tag] = tag_counts.get(tag, 0) + 1
+    if tag_counts:
+        top_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        lines.append("### 热门话题标签")
+        lines.append("")
+        lines.append("| 标签 | 使用次数 |")
+        lines.append("|---|---|")
+        for tag, count in top_tags:
+            lines.append("| #%s | %d |" % (tag, count))
+        lines.append("")
+
+    # 发布时间分布
+    time_slots = {"凌晨(0-6)": 0, "上午(6-12)": 0, "下午(12-18)": 0, "晚上(18-24)": 0}
+    for v in videos:
+        pub = v.get("publish_time", "")
+        hour_match = re.search(r"(\d{1,2}):\d{2}", pub)
+        if hour_match:
+            h = int(hour_match.group(1))
+            if h < 6:
+                time_slots["凌晨(0-6)"] += 1
+            elif h < 12:
+                time_slots["上午(6-12)"] += 1
+            elif h < 18:
+                time_slots["下午(12-18)"] += 1
+            else:
+                time_slots["晚上(18-24)"] += 1
+
+    if sum(time_slots.values()) > 0:
+        lines.append("### 发布时间偏好")
+        lines.append("")
+        for slot, count in time_slots.items():
+            lines.append("- **%s**: %d 条" % (slot, count))
+        lines.append("")
+
+    # 5. 评论洞察
+    lines.append("## 五、评论洞察")
+    lines.append("")
+
+    all_comments = []
+    for v in videos:
+        for c in v.get("top_comments", []):
+            all_comments.append(c.get("text", ""))
+
+    if all_comments:
+        # 简单高频词统计（2字以上中文词）
+        word_counts = {}
+        for text in all_comments:
+            # 简单分词：按非中文切割，取 2-4 字片段
+            cleaned = re.sub(r"[^一-鿿]", " ", text)
+            words = cleaned.split()
+            for w in words:
+                if 2 <= len(w) <= 4:
+                    word_counts[w] = word_counts.get(w, 0) + 1
+        top_words = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)[:20]
+        if top_words:
+            lines.append("### 评论高频词 Top 20")
+            lines.append("")
+            lines.append("| 词汇 | 出现次数 |")
+            lines.append("|---|---|")
+            for word, count in top_words:
+                lines.append("| %s | %d |" % (word, count))
+            lines.append("")
+
+        # 情感简析（基于关键词）
+        positive_keywords = ["好", "棒", "赞", "厉害", "牛", "喜欢", "不错", "支持", "加油", "爱", "优秀",
+                             "👍", "🔥", "❤", "😍", "哈哈", "笑", "绝", "神", "顶", "强"]
+        negative_keywords = ["差", "垃圾", "不好", "无聊", "失望", "举报", "恶心", "烂",
+                             "👎", "踩", "呸", "吐", "无语", "尴尬"]
+        pos_count = sum(1 for t in all_comments if any(kw in t for kw in positive_keywords))
+        neg_count = sum(1 for t in all_comments if any(kw in t for kw in negative_keywords))
+        total_comments = len(all_comments)
+        lines.append("### 情感倾向简析")
+        lines.append("")
+        lines.append("- 正面评论: %d 条 (%.1f%%)" % (pos_count, pos_count / total_comments * 100 if total_comments else 0))
+        lines.append("- 负面评论: %d 条 (%.1f%%)" % (neg_count, neg_count / total_comments * 100 if total_comments else 0))
+        lines.append("- 中性/其他: %d 条 (%.1f%%)" % (
+            total_comments - pos_count - neg_count,
+            (total_comments - pos_count - neg_count) / total_comments * 100 if total_comments else 0,
+        ))
+        lines.append("")
+
+    # 6. 趋势观察
+    lines.append("## 六、趋势观察")
+    lines.append("")
+    if len(videos) >= 10:
+        recent = videos[:10]
+        early = videos[-10:]
+        recent_avg_likes = sum(v.get("likes", 0) for v in recent) / max(len(recent), 1)
+        early_avg_likes = sum(v.get("likes", 0) for v in early) / max(len(early), 1)
+        recent_avg_comments = sum(v.get("comments_count", 0) for v in recent) / max(len(recent), 1)
+        early_avg_comments = sum(v.get("comments_count", 0) for v in early) / max(len(early), 1)
+
+        lines.append("| 对比维度 | 近期10条 | 早期10条 | 变化 |")
+        lines.append("|---|---|---|---|")
+        lines.append("| 平均点赞 | %s | %s | %s |" % (
+            _format_count(int(recent_avg_likes)), _format_count(int(early_avg_likes)),
+            _trend_emoji(recent_avg_likes, early_avg_likes),
+        ))
+        lines.append("| 平均评论 | %s | %s | %s |" % (
+            _format_count(int(recent_avg_comments)), _format_count(int(early_avg_comments)),
+            _trend_emoji(recent_avg_comments, early_avg_comments),
+        ))
+        lines.append("")
+        lines.append("> %s近期点赞表现%s早期。%s评论互动%s早期。" % (
+            "📈" if recent_avg_likes > early_avg_likes else "📉",
+            "优于" if recent_avg_likes > early_avg_likes else "低于",
+            "📈" if recent_avg_comments > early_avg_comments else "📉",
+            "优于" if recent_avg_comments > early_avg_comments else "低于",
+        ))
+        lines.append("")
+
+    lines.append("---")
+    lines.append("*报告由 scrape_douyin.py 自动生成*")
+
+    report = "\n".join(lines)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(report)
+    print("分析报告已生成:", output_path)
+    return output_path
+
+
+def _format_count(n):
+    """格式化数字为可读形式。"""
+    if n >= 100000000:
+        return "%.1f亿" % (n / 100000000)
+    if n >= 10000:
+        return "%.1f万" % (n / 10000)
+    return str(n)
+
+
+def _trend_emoji(recent, early):
+    if recent >= early * 1.2:
+        return "📈 上升"
+    elif recent <= early * 0.8:
+        return "📉 下降"
+    else:
+        return "➡ 持平"
+
+
 def main():
     args = parse_args()
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -559,27 +788,49 @@ def main():
     session_path = args.session or os.path.join(data_dir, "douyin_session.json")
 
     p, browser, context, page = launch_browser(session_path)
+
     try:
         login_if_needed(page, args.timeout, session_path)
         save_session(context, session_path)
 
-        # 等待用户查看浏览器，确认登录成功
-        print("登录完成，浏览器将保持打开。请在终端继续操作。")
-        input("按 Enter 开始抓取数据...")
-
-        account = scrape_account(page, args.url)
         timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        json_path = os.path.join(data_dir, "%s-douyin-account.json" % timestamp)
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump({"account": account, "videos": []}, f, ensure_ascii=False, indent=2)
-        print("账号数据已保存:", json_path)
+        json_path = os.path.join(data_dir, "%s-douyin-data.json" % timestamp)
+        report_path = os.path.join(data_dir, "%s-douyin-report.md" % timestamp)
 
+        # 1. 抓取账号数据
+        account = scrape_account(page, args.url)
+
+        # 2. 收集视频链接
         video_urls = collect_video_links(page, account.get("video_count", 0))
         print("共收集 %d 个视频" % len(video_urls))
 
-        # 批量抓取视频数据
+        # 写入初始 JSON (含账号数据)
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump({"account": account, "videos": []}, f, ensure_ascii=False, indent=2)
+
+        # 3. 批量抓取视频数据 + 评论
         data = scrape_videos_batch(page, video_urls, json_path, max_comments=args.max_comments)
 
+        # 4. 生成分析报告
+        generate_report(data["account"], data["videos"], report_path)
+
+        print("")
+        print("=" * 50)
+        print("抓取完成！")
+        print("原始数据: %s" % json_path)
+        print("分析报告: %s" % report_path)
+        print("=" * 50)
+
+    except KeyboardInterrupt:
+        print("\n已中断。下次运行将自动从已有数据继续。")
+    except TimeoutError as e:
+        print("错误:", e, file=sys.stderr)
+        return 1
+    except Exception as e:
+        print("错误:", e, file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return 1
     finally:
         context.close()
         browser.close()
