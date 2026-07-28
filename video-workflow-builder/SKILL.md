@@ -212,8 +212,8 @@ python3 "$SKILL_DIR/scripts/validate_skill.py" <生成的产物目录>
 
 **配置脚本**：
 
-- 无条件复制进产物：`generate_cover.py`（封面生成脚本）、`.env.example`（密钥占位模板）、`.gitignore`（确保真实 `.env` 不被提交）
-- 视垂类需要，额外配置抓取实时数据的脚本：**判断标准是该垂类是否需要活数据**——财经类（行情/财报）、热点追踪类（实时新闻/热搜）、榜单类（销量榜/播放榜）这三类需要；纯知识科普、故事叙事、生活记录等垂类通常不需要，跳过这一步即可
+- 无条件复制进产物：`generate_cover.py`（封面生成脚本）、`fetch_hotlist.py`（选题第零步扫实时热榜，调自部署的 DailyHotApi）、`content_db.py`/`archive_content.py`/`query_db.py`/`update_metrics.py`（内容资产库）、`.env.example`（配置占位模板，含 `LLM_GATEWAY_API_KEY` 与 `DAILYHOT_API_BASE`）、`.gitignore`（确保真实 `.env` 不被提交）。这批是 `validate_skill.py` 校验的必需脚本，少一个产物就通不过校验。
+- 视垂类需要，额外配置抓取实时数据的脚本：**判断标准是该垂类是否需要活数据**——财经类（行情/财报）、热点追踪类（实时新闻/热搜）、榜单类（销量榜/播放榜）这三类需要；纯知识科普、故事叙事、生活记录等垂类通常不需要，跳过这一步即可。（注：`fetch_hotlist.py` 抓的是跨平台通用热榜，属上面的无条件必备项，与这里"垂类专属活数据脚本"是两回事。）
 
 **密钥处理（安全红线）**：产物用到的真实 API key，只能写进产物目录下、被 `.gitignore` 排除的真实 `.env` 文件里，由用户自己配置或本技能在生成时以环境变量形式写入该 git-ignored 文件；随技能一起提交/追踪的 `.env.example` 永远只放占位符（如 `LLM_GATEWAY_API_KEY=your_key_here`）。任何真实密钥值都不允许写进 SKILL.md 或任何会被版本控制追踪的文件。
 

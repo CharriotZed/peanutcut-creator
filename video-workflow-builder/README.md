@@ -29,6 +29,8 @@
 pip install openai
 ```
 
+产物还带一个 `scripts/fetch_hotlist.py`，在选题第零步扫各平台实时热榜（免登录、只读公开热榜、无封号风险）。它依赖一个**自部署的 [imsyy/DailyHotApi](https://github.com/imsyy/DailyHotApi)** 实例（Docker 或 Vercel 一键部署），部署后把地址填进产物 `.env` 的 `DAILYHOT_API_BASE`（如 `http://localhost:6688`）。脚本本身只用 `python3` 标准库，无额外 pip 依赖。**抓不到数据时脚本直接报错、绝不返回缓存热榜**——偏离实时常识的选题就是垃圾，宁可停下修数据源。
+
 本技能自身（生成器）不需要额外依赖，只用到 `python3` 标准库跑 `scripts/validate_skill.py` 做结构校验。
 
 ## 生成出来的产物长什么样
