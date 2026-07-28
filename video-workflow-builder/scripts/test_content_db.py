@@ -63,15 +63,17 @@ def test_archive_appends_series_member(monkeypatch, tmp_path):
     assert len(meta["members"]) == 2
 
 
-def test_archive_duplicate_id_raises(monkeypatch, tmp_path):
+def test_archive_duplicate_id_gets_suffix(monkeypatch, tmp_path):
     monkeypatch.setenv("CONTENT_DB_ROOT", str(tmp_path))
     import archive_content as ac
-    ac.archive(topic="同题", title="T", script_body="a",
-               platform=["抖音"], tags=[], created="2026-07-27")
-    import pytest
-    with pytest.raises(FileExistsError):
-        ac.archive(topic="同题", title="T", script_body="a",
-                   platform=["抖音"], tags=[], created="2026-07-27")
+    p1 = ac.archive(topic="同题", title="T", script_body="a",
+                    platform=["抖音"], tags=[], created="2026-07-27")
+    p2 = ac.archive(topic="同题", title="T2", script_body="b",
+                    platform=["抖音"], tags=[], created="2026-07-27")
+    assert p1.endswith("2026-07-27-同题.md")
+    assert p2.endswith("2026-07-27-同题-2.md")
+    import query_db as q
+    assert len(q.load_entries()) == 2  # both archived, index has both
 
 
 def _seed(tmp_path, monkeypatch):
@@ -133,3 +135,13 @@ def test_end_to_end(monkeypatch, tmp_path):
     ranked = q.top(1, by="views")
     assert ranked[0]["id"] == "2026-07-27-第一期茅台"
     assert ranked[0]["status"] == "published"
+
+
+def test_query_absent_data_root_returns_empty(monkeypatch, tmp_path):
+    missing = tmp_path / "never-created"
+    monkeypatch.setenv("CONTENT_DB_ROOT", str(missing))
+    import query_db as q
+    assert q.search("anything") == []
+    assert q.list_series("任意系列") == []
+    assert q.top(5, by="views") == []
+    assert not missing.exists()  # read must not create the dir

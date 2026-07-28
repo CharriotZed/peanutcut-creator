@@ -110,7 +110,7 @@ members:                 # 该系列下已产出内容的 id 列表
 **`archive_content.py`** — 写入一条新内容
 - 输入：选题、标题、文稿正文、平台、tags、（可选）系列
 - 行为：生成 id（`<日期>-<选题slug>`）→ 写 `content/<id>.md`（status=pending）→ 更新 `index.json`→ 若指定了系列，把 id 追加进 `series/<系列slug>.md` 的 members
-- 边界：目录不存在则创建；同 id 已存在则报错提示，不静默覆盖
+- 边界：目录不存在则创建；同 id 已存在则追加数字后缀（`-2`/`-3`）区分，不静默覆盖
 
 **`query_db.py`** — 读 `index.json` 支持三种查询
 - `--search <关键词>`：选题/标题/tags 去重检索——"我以前做过类似的吗"（服务**去重**）
