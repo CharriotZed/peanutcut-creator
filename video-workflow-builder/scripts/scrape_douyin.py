@@ -427,89 +427,93 @@ def scrape_comments(page, max_count=20):
     """在视频详情页抓取 Top N 条评论。"""
     comments = []
 
-    # 滚动到评论区
     try:
-        page.evaluate("window.scrollBy(0, 600)")
-        time.sleep(2)
-    except Exception:
-        pass
-
-    # 尝试多种评论容器选择器
-    comment_selectors = [
-        '[data-e2e="comment-item"]',
-        '[class*="comment-item"]',
-        '[class*="CommentItem"]',
-        'div:has(> [class*="comment"])',
-        # 兜底：查找包含"评论"标题区域之后的列表项
-    ]
-
-    comment_els = []
-    for sel in comment_selectors:
-        els = page.locator(sel).all()
-        if els:
-            comment_els = els
-            break
-
-    if not comment_els:
-        # 最终兜底：尝试查找页面中所有类似评论的结构
-        # 评论区通常在视频下方
+        # 滚动到评论区
         try:
-            comment_els = page.locator('[class*="comment"] > div, [class*="reply"] > div').all()
+            page.evaluate("window.scrollBy(0, 600)")
+            time.sleep(2)
         except Exception:
             pass
 
-    # 滚动评论区以加载更多
-    collected = 0
-    scroll_attempts = 0
-    while collected < max_count and scroll_attempts < 10:
-        if comment_els:
-            for el in comment_els[collected : min(len(comment_els), max_count)]:
-                try:
-                    text = el.inner_text().strip()
-                    if not text or len(text) < 2:
-                        continue
-                    # 解析评论者昵称（通常在内容上方，用小号字体）
-                    lines = text.split("\n")
-                    user = lines[0] if lines else ""
-                    content = lines[1] if len(lines) > 1 else text
+        # 尝试多种评论容器选择器
+        comment_selectors = [
+            '[data-e2e="comment-item"]',
+            '[class*="comment-item"]',
+            '[class*="CommentItem"]',
+            'div:has(> [class*="comment"])',
+            # 兜底：查找包含"评论"标题区域之后的列表项
+        ]
 
-                    # 提取评论点赞数
-                    likes = 0
-                    likes_match = re.search(r"(\d[\d,.]*[亿万]?)\s*(?:赞|likes?)", content)
-                    if likes_match:
-                        likes = _parse_count(likes_match.group(1))
-
-                    # 清理内容中的点赞数
-                    content = re.sub(r"\d[\d,.]*[亿万]?\s*(?:赞|likes?|回复)", "", content).strip()
-
-                    if content and content != user:
-                        comments.append({
-                            "user": user[:30],
-                            "text": content[:500],
-                            "likes": likes,
-                            "reply_count": 0,
-                            "time": "",
-                        })
-                        collected += 1
-                except Exception:
-                    continue
-
-        if collected >= max_count:
-            break
-
-        # 滚动评论区加载更多
-        page.evaluate("window.scrollBy(0, 400)")
-        time.sleep(2)
-        scroll_attempts += 1
-
-        # 重新获取评论元素
+        comment_els = []
         for sel in comment_selectors:
             els = page.locator(sel).all()
             if els:
                 comment_els = els
                 break
 
-    return comments[:max_count]
+        if not comment_els:
+            # 最终兜底：尝试查找页面中所有类似评论的结构
+            # 评论区通常在视频下方
+            try:
+                comment_els = page.locator('[class*="comment"] > div, [class*="reply"] > div').all()
+            except Exception:
+                pass
+
+        # 滚动评论区以加载更多
+        collected = 0
+        scroll_attempts = 0
+        while collected < max_count and scroll_attempts < 10:
+            if comment_els:
+                for el in comment_els[collected : min(len(comment_els), max_count)]:
+                    try:
+                        text = el.inner_text().strip()
+                        if not text or len(text) < 2:
+                            continue
+                        # 解析评论者昵称（通常在内容上方，用小号字体）
+                        lines = text.split("\n")
+                        user = lines[0] if lines else ""
+                        content = lines[1] if len(lines) > 1 else text
+
+                        # 提取评论点赞数
+                        likes = 0
+                        likes_match = re.search(r"(\d[\d,.]*[亿万]?)\s*(?:赞|likes?)", content)
+                        if likes_match:
+                            likes = _parse_count(likes_match.group(1))
+
+                        # 清理内容中的点赞数
+                        content = re.sub(r"\d[\d,.]*[亿万]?\s*(?:赞|likes?|回复)", "", content).strip()
+
+                        if content and content != user:
+                            comments.append({
+                                "user": user[:30],
+                                "text": content[:500],
+                                "likes": likes,
+                                "reply_count": 0,
+                                "time": "",
+                            })
+                            collected += 1
+                    except Exception:
+                        continue
+
+            if collected >= max_count:
+                break
+
+            # 滚动评论区加载更多
+            page.evaluate("window.scrollBy(0, 400)")
+            time.sleep(2)
+            scroll_attempts += 1
+
+            # 重新获取评论元素
+            for sel in comment_selectors:
+                els = page.locator(sel).all()
+                if els:
+                    comment_els = els
+                    break
+
+        return comments[:max_count]
+    except Exception as e:
+        print("  ⚠ 评论抓取失败: %s" % str(e)[:80])
+        return []
 
 
 def scrape_videos_batch(page, video_urls, json_path, max_comments=20):
@@ -528,7 +532,17 @@ def scrape_videos_batch(page, video_urls, json_path, max_comments=20):
 
     for i, url in enumerate(pending_urls):
         print("\n[%d/%d] %s" % (i + 1, len(pending_urls), url))
-        video = scrape_video(page, url)
+        try:
+            video = scrape_video(page, url)
+        except Exception as e:
+            print("  ⚠ 抓取失败: %s" % str(e)[:80])
+            video = {
+                "video_id": re.search(r"/video/(\d+)", url).group(1) if re.search(r"/video/(\d+)", url) else url,
+                "url": url, "title": "", "cover_url": "", "duration_sec": 0,
+                "publish_time": "", "views": 0, "likes": 0, "comments_count": 0,
+                "shares": 0, "hashtags": [], "top_comments": [],
+                "error": str(e)[:200],
+            }
 
         # 如果有评论需求，追加抓取
         if max_comments > 0 and not video.get("error"):
