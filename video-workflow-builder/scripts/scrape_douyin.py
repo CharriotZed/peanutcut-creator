@@ -31,6 +31,7 @@ def parse_args():
 
 def resolve_data_dir(script_dir, cli_override):
     if cli_override:
+        os.makedirs(cli_override, exist_ok=True)
         return cli_override
     d = os.path.join(script_dir, "data")
     os.makedirs(d, exist_ok=True)
@@ -262,7 +263,8 @@ def collect_video_links(page, expected_count=0):
         pass
     time.sleep(2)
 
-    collected = set()
+    collected = []
+    seen = set()
     scroll_attempts = 0
     max_scrolls = 200  # 安全上限
     last_count = 0
@@ -276,7 +278,9 @@ def collect_video_links(page, expected_count=0):
                 href = link.get_attribute("href")
                 if href and "/video/" in href:
                     full_url = "https://www.douyin.com" + href.split("?")[0] if href.startswith("/") else href.split("?")[0]
-                    collected.add(full_url)
+                    if full_url not in seen:
+                        seen.add(full_url)
+                        collected.append(full_url)
             except Exception:
                 continue
 
@@ -289,7 +293,9 @@ def collect_video_links(page, expected_count=0):
                     href = parent_a.first.get_attribute("href")
                     if href and "/video/" in href:
                         full_url = "https://www.douyin.com" + href.split("?")[0] if href.startswith("/") else href.split("?")[0]
-                        collected.add(full_url)
+                        if full_url not in seen:
+                            seen.add(full_url)
+                            collected.append(full_url)
             except Exception:
                 continue
 
@@ -317,7 +323,7 @@ def collect_video_links(page, expected_count=0):
 
     print("")
     print("收集完成: %d 个视频链接" % len(collected))
-    return list(collected)
+    return collected
 
 
 def scrape_video(page, video_url):
@@ -807,8 +813,11 @@ def main():
         login_if_needed(page, args.timeout, session_path)
         save_session(context, session_path)
 
+        # 提取用户 ID 用于稳定文件名（断点续抓）
+        user_id_match = re.search(r"user/([A-Za-z0-9_-]+)", args.url)
+        user_slug = user_id_match.group(1)[:20] if user_id_match else datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        json_path = os.path.join(data_dir, "%s-douyin-data.json" % user_slug)
         timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        json_path = os.path.join(data_dir, "%s-douyin-data.json" % timestamp)
         report_path = os.path.join(data_dir, "%s-douyin-report.md" % timestamp)
 
         # 1. 抓取账号数据
@@ -818,9 +827,17 @@ def main():
         video_urls = collect_video_links(page, account.get("video_count", 0))
         print("共收集 %d 个视频" % len(video_urls))
 
-        # 写入初始 JSON (含账号数据)
+        # 写入初始 JSON (含账号数据，但保留已有视频列表以支持断点续抓)
+        existing_videos = []
+        if os.path.isfile(json_path):
+            try:
+                with open(json_path, "r", encoding="utf-8") as f:
+                    prev = json.load(f)
+                    existing_videos = prev.get("videos", [])
+            except (json.JSONDecodeError, ValueError):
+                pass
         with open(json_path, "w", encoding="utf-8") as f:
-            json.dump({"account": account, "videos": []}, f, ensure_ascii=False, indent=2)
+            json.dump({"account": account, "videos": existing_videos}, f, ensure_ascii=False, indent=2)
 
         # 3. 批量抓取视频数据 + 评论
         data = scrape_videos_batch(page, video_urls, json_path, max_comments=args.max_comments)
