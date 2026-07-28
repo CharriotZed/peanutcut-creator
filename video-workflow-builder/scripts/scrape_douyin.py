@@ -488,6 +488,9 @@ def main():
         video_urls = collect_video_links(page, account.get("video_count", 0))
         print("共收集 %d 个视频" % len(video_urls))
 
+        # 批量抓取视频数据
+        data = scrape_videos_batch(page, video_urls, json_path, max_comments=0)
+
     finally:
         context.close()
         browser.close()
