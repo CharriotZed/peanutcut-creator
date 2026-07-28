@@ -2,7 +2,7 @@ import os
 import validate_skill as v
 
 _REQUIRED = ["content_db.py", "archive_content.py", "query_db.py",
-             "update_metrics.py", "generate_cover.py"]
+             "update_metrics.py", "generate_cover.py", "fetch_hotlist.py"]
 
 
 def _make_skill(tmp_path, with_scripts):

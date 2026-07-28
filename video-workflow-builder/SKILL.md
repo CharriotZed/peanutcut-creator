@@ -212,8 +212,8 @@ python3 "$SKILL_DIR/scripts/validate_skill.py" <生成的产物目录>
 
 **配置脚本**：
 
-- 无条件复制进产物：`generate_cover.py`（封面生成脚本）、`content_db.py` / `archive_content.py` / `query_db.py` / `update_metrics.py`（内容资产库脚本，产物借此结构化存档与索引每次产出的内容）、`.env.example`（密钥占位模板）、`.gitignore`（确保真实 `.env` 不被提交）
-- 视垂类需要，额外配置抓取实时数据的脚本：**判断标准是该垂类是否需要活数据**——财经类（行情/财报）、热点追踪类（实时新闻/热搜）、榜单类（销量榜/播放榜）这三类需要；纯知识科普、故事叙事、生活记录等垂类通常不需要，跳过这一步即可
+- 无条件复制进产物：`generate_cover.py`（封面生成脚本）、`fetch_hotlist.py`（选题第零步扫实时热榜，调自部署的 DailyHotApi）、`content_db.py`/`archive_content.py`/`query_db.py`/`update_metrics.py`（内容资产库）、`.env.example`（配置占位模板，含 `LLM_GATEWAY_API_KEY` 与 `DAILYHOT_API_BASE`）、`.gitignore`（确保真实 `.env` 不被提交）。这批是 `validate_skill.py` 校验的必需脚本，少一个产物就通不过校验。
+- 视垂类需要，额外配置抓取实时数据的脚本：**判断标准是该垂类是否需要活数据**——财经类（行情/财报）、热点追踪类（实时新闻/热搜）、榜单类（销量榜/播放榜）这三类需要；纯知识科普、故事叙事、生活记录等垂类通常不需要，跳过这一步即可。（注：`fetch_hotlist.py` 抓的是跨平台通用热榜，属上面的无条件必备项，与这里"垂类专属活数据脚本"是两回事。）
 
 **内容资产库（每个产物必带）**：产物要能把每次产出的内容结构化沉淀到独立于 skill 的长期数据库 `~/.claude|.codex/content-db/<账号slug>/`。落地方式：把 `content_db.py`/`archive_content.py`/`query_db.py`/`update_metrics.py` 复制进产物 `scripts/`（脚本从自身路径推导账号 slug 与数据根，无需改写）；产物的选题模块开头查库去重与找系列、文稿模块末尾自动存档、SKILL.md 说明回填与查库方式——这三处已在模板中就位，填模板时不要删。数据独立存放，重装产物 skill 不影响历史内容。
 
