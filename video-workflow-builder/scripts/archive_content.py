@@ -43,15 +43,16 @@ def _index_entry(meta):
 
 def rebuild_index(data_root):
     content_dir = os.path.join(data_root, "content")
+    if not os.path.isdir(content_dir):
+        return {"updated": "", "entries": []}
     index = {"updated": "", "entries": []}
-    if os.path.isdir(content_dir):
-        for name in sorted(os.listdir(content_dir)):
-            if not name.endswith(".md"):
-                continue
-            with open(os.path.join(content_dir, name), encoding="utf-8") as f:
-                meta, _ = cdb.parse_frontmatter(f.read())
-            if meta:
-                index["entries"].append(_index_entry(meta))
+    for name in sorted(os.listdir(content_dir)):
+        if not name.endswith(".md"):
+            continue
+        with open(os.path.join(content_dir, name), encoding="utf-8") as f:
+            meta, _ = cdb.parse_frontmatter(f.read())
+        if meta:
+            index["entries"].append(_index_entry(meta))
     _write_index(data_root, index)
     return index
 
@@ -81,10 +82,14 @@ def archive(topic, title, script_body, platform, tags,
     created = created or datetime.date.today().isoformat()
     content_dir = os.path.join(data_root, "content")
     os.makedirs(content_dir, exist_ok=True)
-    content_id = "%s-%s" % (created, cdb.slugify(topic))
+    base_id = "%s-%s" % (created, cdb.slugify(topic))
+    content_id = base_id
     md_path = os.path.join(content_dir, content_id + ".md")
-    if os.path.exists(md_path):
-        raise FileExistsError("content already exists: %s" % md_path)
+    n = 2
+    while os.path.exists(md_path):
+        content_id = "%s-%d" % (base_id, n)
+        md_path = os.path.join(content_dir, content_id + ".md")
+        n += 1
     meta = {
         "id": content_id, "created": created, "platform": platform,
         "topic": topic, "title": title, "series": series or "",

@@ -79,3 +79,22 @@ python3 "$SKILL_DIR/scripts/xxx.py"
 {{POSITIONING}}
 
 完整的定位依据、受众画像、差异化打法、变现路径见 [账号定位诊断](references/positioning.md)。
+
+## 内容资产库
+
+本工作流会把你每次产出的内容结构化沉淀到一个长期数据库,独立于本 skill 存放,重装/更新 skill 不会丢数据:
+
+- **数据位置**：`~/.claude/content-db/{{ACCOUNT_SLUG}}/`（Codex 下 `~/.codex/content-db/{{ACCOUNT_SLUG}}/`）。每条内容一个 md 文件（`content/`）,一个 `index.json` 汇总索引,系列元数据在 `series/`。
+- **自动存档**：走完文稿模块后自动写入,状态为「待发布」(pending),含创建时间、选题、标题、平台、文稿正文。
+- **回填发布数据**：内容发出去后,说"回填 <内容id> 的数据",或直接跑:
+
+  ```bash
+  SKILL_DIR="$HOME/.claude/skills/{{ACCOUNT_SLUG}}-workflow"
+  [ -d "$SKILL_DIR" ] || SKILL_DIR="$HOME/.codex/skills/{{ACCOUNT_SLUG}}-workflow"
+  python3 "$SKILL_DIR/scripts/update_metrics.py" --id 2026-07-27-选题slug \
+    --views 125000 --likes 8300 --comments 420 --completion-rate 0.42 \
+    --publish-date 2026-07-28 --notes "前3秒钩子有效"
+  ```
+
+- **查库**：`query_db.py --search "关键词"`（查是否做过）、`--series "系列名"`（列出某系列各期）、`--top 5 --by views`（按播放排序找可复制的打法）。选题模块会自动查库去重、找系列线索。
+- **系列合集**：存档时带 `--series "系列名"` 即把该条归入系列,系列成员与定位记录在 `series/<系列slug>.md`。

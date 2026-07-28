@@ -63,15 +63,17 @@ def test_archive_appends_series_member(monkeypatch, tmp_path):
     assert len(meta["members"]) == 2
 
 
-def test_archive_duplicate_id_raises(monkeypatch, tmp_path):
+def test_archive_duplicate_id_gets_suffix(monkeypatch, tmp_path):
     monkeypatch.setenv("CONTENT_DB_ROOT", str(tmp_path))
     import archive_content as ac
-    ac.archive(topic="同题", title="T", script_body="a",
-               platform=["抖音"], tags=[], created="2026-07-27")
-    import pytest
-    with pytest.raises(FileExistsError):
-        ac.archive(topic="同题", title="T", script_body="a",
-                   platform=["抖音"], tags=[], created="2026-07-27")
+    p1 = ac.archive(topic="同题", title="T", script_body="a",
+                    platform=["抖音"], tags=[], created="2026-07-27")
+    p2 = ac.archive(topic="同题", title="T2", script_body="b",
+                    platform=["抖音"], tags=[], created="2026-07-27")
+    assert p1.endswith("2026-07-27-同题.md")
+    assert p2.endswith("2026-07-27-同题-2.md")
+    import query_db as q
+    assert len(q.load_entries()) == 2  # both archived, index has both
 
 
 def _seed(tmp_path, monkeypatch):
@@ -112,3 +114,34 @@ def test_load_entries_rebuilds_when_index_missing(monkeypatch, tmp_path):
     os.remove(os.path.join(str(tmp_path), "index.json"))
     import query_db as q
     assert len(q.load_entries()) == 2
+
+
+def test_end_to_end(monkeypatch, tmp_path):
+    monkeypatch.setenv("CONTENT_DB_ROOT", str(tmp_path))
+    import archive_content as ac
+    import query_db as q
+    import update_metrics as um
+    # 1. 存档两条同系列内容
+    ac.archive(topic="第一期茅台", title="T1", script_body="稿1",
+               platform=["抖音"], tags=["白酒"], series="复盘", created="2026-07-27")
+    ac.archive(topic="第二期宁王", title="T2", script_body="稿2",
+               platform=["B站"], tags=["新能源"], series="复盘", created="2026-07-28")
+    # 2. 查重命中
+    assert len(q.search("茅台")) == 1
+    # 3. 系列列出两期
+    assert len(q.list_series("复盘")) == 2
+    # 4. 回填数据后 status=published 且排序生效
+    um.update("2026-07-27-第一期茅台", {"views": 500}, publish_date="2026-07-28")
+    ranked = q.top(1, by="views")
+    assert ranked[0]["id"] == "2026-07-27-第一期茅台"
+    assert ranked[0]["status"] == "published"
+
+
+def test_query_absent_data_root_returns_empty(monkeypatch, tmp_path):
+    missing = tmp_path / "never-created"
+    monkeypatch.setenv("CONTENT_DB_ROOT", str(missing))
+    import query_db as q
+    assert q.search("anything") == []
+    assert q.list_series("任意系列") == []
+    assert q.top(5, by="views") == []
+    assert not missing.exists()  # read must not create the dir
