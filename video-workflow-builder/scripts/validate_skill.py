@@ -40,6 +40,7 @@ def validate_skill_dir(path):
     required_scripts = [
         "content_db.py", "archive_content.py", "query_db.py",
         "update_metrics.py", "generate_cover.py", "fetch_hotlist.py",
+        "web_search.py",
     ]
     scripts_dir = os.path.join(path, "scripts")
     for name in required_scripts:
