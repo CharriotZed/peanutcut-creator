@@ -11,7 +11,8 @@ description: 视频创作工作流生成器。当用户想为自己的账号定�
 
 本技能同时支持 **Claude Code** 和 **Codex**（以及其它遵循 SKILL.md 规范的 agent）。下文提到具体工具名时，请按你当前所在的运行环境映射到等价能力，不要因为"没有叫这个名字的工具"就跳过步骤：
 
-- **联网搜索/抓取网页**：Claude Code 用 `WebSearch` / `WebFetch`；Codex 用其内置的联网搜索 / 网页读取能力（如 `web.search` / 浏览工具）。凡文中说"用 WebSearch / WebFetch"，即指"用当前环境的联网搜索与网页抓取工具"。若当前环境确实无联网能力，如实告知用户无法获取实时数据，退回内部知识作研究依据，不要用记忆里的旧数据冒充实时情报。
+- **联网搜索（统一走网关，别用自带 WebSearch）**：本技能的联网搜索**一律通过内置的 `scripts/web_search.py`（qianfan web search 网关）**，**不要**直接用 Claude Code 自带的 `WebSearch` 或 Codex 自带的联网搜索工具。这样搜索源可控、结果结构统一、跨 agent 环境行为一致。调用方式：`python3 "$SKILL_DIR/scripts/web_search.py" "搜索词" [--top N] [--json]`（密钥从技能目录 `.env` 的 `QIANFAN_WEBSEARCH_API_KEY` 读取，已随技能配好）。若网关报错/无密钥，如实告知用户无法获取实时数据，退回内部知识作研究依据，不要用记忆里的旧数据冒充实时情报，也不要偷偷改用自带 WebSearch。
+- **抓取网页正文**：优先看 `web_search.py` 每条结果自带的 `content` 字段（网关已摘出约前 1000 字，判断相关性/快速扫风向足够）。需要读**完整全文**（网关 content 只有全文约两成、且从中间截断）时，用 `python3 "$SKILL_DIR/scripts/web_search.py" <url> --full [--max-chars N]` 本机直抓提纯——**不要用 Claude Code/Codex 自带的 WebFetch**：它跑在云端，对国内站（163/百家号/东方财富等）会系统性报"无法确认域名安全"而失败，本机抓取则没有这个问题。
 - **写文件**：Claude Code 用 `Write` 工具；Codex 直接用其文件写入能力（或 `apply_patch`）。凡说"用 Write 工具生成某文件"，即指"用当前环境的文件写入能力落地该文件"。生成产物 skill 时涉及的每一个文件（SKILL.md、各模块文档、脚本、配置）都要真实落地到磁盘，不能只在对话里描述。
 - **跑脚本**：两个环境都通过 shell 执行 `python3`。脚本路径见下方「脚本路径」——一律用技能目录的绝对路径，不要假设当前工作目录就是技能目录。
 
@@ -82,7 +83,7 @@ python3 "$SKILL_DIR/scripts/validate_skill.py" <生成的产物目录>
 
 拿到平台×垂类的组合后，双线并行展开研究：
 
-**联网研究（用 WebSearch / WebFetch）**，围绕选定的平台和垂类，至少覆盖：
+**联网研究（用 `scripts/web_search.py` 网关搜索，别用自带 WebSearch；需要读全文时用 `--full` 本机抓正文，别用 WebFetch）**，围绕选定的平台和垂类，至少覆盖：
 
 - **受众画像**：这个垂类在该平台上的典型观众是谁、年龄画像、观看动机、常见困惑和期待
 - **当下爆款案例与共性**：搜近期该垂类在该平台的热门视频/账号，提炼选题角度、标题打法、封面风格的共性规律
@@ -212,7 +213,7 @@ python3 "$SKILL_DIR/scripts/validate_skill.py" <生成的产物目录>
 
 **配置脚本**：
 
-- 无条件复制进产物：`generate_cover.py`（封面生成脚本）、`fetch_hotlist.py`（选题第零步扫实时热榜，调自部署的 DailyHotApi）、`content_db.py`/`archive_content.py`/`query_db.py`/`update_metrics.py`（内容资产库）、`.env.example`（配置占位模板，含 `LLM_GATEWAY_API_KEY` 与 `DAILYHOT_API_BASE`）、`.gitignore`（确保真实 `.env` 不被提交）。这批是 `validate_skill.py` 校验的必需脚本，少一个产物就通不过校验。
+- 无条件复制进产物：`web_search.py`（联网搜索网关，产物做选题/热点研究时统一走它，别用自带 WebSearch）、`generate_cover.py`（封面生成脚本）、`fetch_hotlist.py`（选题第零步扫实时热榜，调自部署的 DailyHotApi）、`content_db.py`/`archive_content.py`/`query_db.py`/`update_metrics.py`（内容资产库）、`.env.example`（配置占位模板，含 `QIANFAN_WEBSEARCH_API_KEY`、`LLM_GATEWAY_API_KEY` 与 `DAILYHOT_API_BASE`）、`.gitignore`（确保真实 `.env` 不被提交）。这批是 `validate_skill.py` 校验的必需脚本，少一个产物就通不过校验。产物 SKILL.md 里凡涉及联网研究，都要写明"用 `scripts/web_search.py` 网关搜索，别直接用 agent 自带的 WebSearch"，并复制一份真实 `.env`（含 `QIANFAN_WEBSEARCH_API_KEY`）进产物、由 `.gitignore` 排除。
 - 视垂类需要，额外配置抓取实时数据的脚本：**判断标准是该垂类是否需要活数据**——财经类（行情/财报）、热点追踪类（实时新闻/热搜）、榜单类（销量榜/播放榜）这三类需要；纯知识科普、故事叙事、生活记录等垂类通常不需要，跳过这一步即可。（注：`fetch_hotlist.py` 抓的是跨平台通用热榜，属上面的无条件必备项，与这里"垂类专属活数据脚本"是两回事。）
 
 **内容资产库（每个产物必带）**：产物要能把每次产出的内容结构化沉淀到独立于 skill 的长期数据库 `~/.claude|.codex/content-db/<账号slug>/`。落地方式：把 `content_db.py`/`archive_content.py`/`query_db.py`/`update_metrics.py` 复制进产物 `scripts/`（脚本从自身路径推导账号 slug 与数据根，无需改写）；产物的选题模块开头查库去重与找系列、文稿模块末尾自动存档、SKILL.md 说明回填与查库方式——这三处已在模板中就位，填模板时不要删。数据独立存放，重装产物 skill 不影响历史内容。
