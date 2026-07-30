@@ -46,6 +46,7 @@ def test_broken_reference_link_reported():
 _REQUIRED_SCRIPTS = [
     "content_db.py", "archive_content.py", "query_db.py",
     "update_metrics.py", "generate_cover.py", "fetch_hotlist.py",
+    "web_search.py",
 ]
 
 
