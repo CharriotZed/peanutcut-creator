@@ -17,7 +17,8 @@ description: {{NICHE}}垂类的专属视频创作工作流，覆盖选题、文�
 
 本技能同时支持 **Claude Code** 和 **Codex**（以及其它遵循 SKILL.md 规范的 agent）。下文提到具体工具名时，请按你当前所在的运行环境映射到等价能力，不要因为"没有叫这个名字的工具"就跳过步骤：
 
-- **联网搜索/抓取网页**：Claude Code 用 `WebSearch` / `WebFetch`；Codex 用其内置的联网搜索 / 网页读取能力（如 `web.search` / 浏览工具）。凡文中说"用 WebSearch / WebFetch"，即指"用当前环境的联网搜索与网页抓取工具"。若当前环境确实无联网能力，如实告知用户无法获取实时数据，退回内部知识作研究依据，不要用记忆里的旧数据冒充实时情报。
+- **联网搜索（统一走网关，别用自带 WebSearch）**：本技能的联网搜索**一律通过自带的 `scripts/web_search.py`（qianfan web search 网关）**，**不要**直接用 Claude Code 自带的 `WebSearch` 或 Codex 自带的联网搜索工具——这样搜索源可控、结果结构统一、跨 agent 环境行为一致。调用：`python3 "$SKILL_DIR/scripts/web_search.py" "搜索词" [--top N] [--json]`（密钥从技能目录 `.env` 的 `QIANFAN_WEBSEARCH_API_KEY` 读取）。若网关报错/无密钥，如实告知用户无法获取实时数据，退回内部知识作研究依据，不要用旧数据冒充实时情报，也不要偷偷改用自带 WebSearch。
+- **抓取网页正文**：优先看 `web_search.py` 每条结果自带的 `content` 字段（网关已摘出约前 1000 字，判断相关性/快速扫风向足够）。需要读**完整全文**时用 `python3 "$SKILL_DIR/scripts/web_search.py" <url> --full [--max-chars N]` 本机直抓提纯——**不要用自带的 WebFetch**：它跑在云端，对国内站（163/百家号/东方财富等）会系统性报"无法确认域名安全"而失败，本机抓取无此问题。
 - **写文件**：Claude Code 用 `Write` 工具；Codex 直接用其文件写入能力（或 `apply_patch`）。凡说"用 Write 工具生成某文件"，即指"用当前环境的文件写入能力落地该文件"。
 - **跑脚本**：两个环境都通过 shell 执行 `python3`。脚本路径见下方「脚本路径」——一律用技能目录的绝对路径，不要假设当前工作目录就是技能目录。
 

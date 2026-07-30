@@ -38,7 +38,7 @@ python3 "$SKILL_DIR/scripts/fetch_hotlist.py" --platforms douyin,bilibili,zhihu,
 
 需先配好 `DAILYHOT_API_BASE`（见 `.env.example`）。**脚本抓不到会直接报错、绝不返回旧数据**——这是刻意的：偏离实时常识的选题就是垃圾，宁可停下修数据源，也不拿过时热榜硬编。
 
-**② 再用 WebSearch / WebFetch 补垂类角度**：热榜给的是"全网在聊什么"，还要针对 {{NICHE}} 挖"这个垂类当下的具体热点"，扫下列源——
+**② 再用 `scripts/web_search.py` 网关搜索补垂类角度**（别用自带 WebSearch）：热榜给的是"全网在聊什么"，还要针对 {{NICHE}} 挖"这个垂类当下的具体热点"，用 `python3 "$SKILL_DIR/scripts/web_search.py" "搜索词" --top 15` 扫下列源——
 
 {{HOT_SOURCE_GUIDE}}
 
