@@ -12,7 +12,7 @@ description: 视频创作工作流生成器。当用户想为自己的账号定�
 本技能同时支持 **Claude Code** 和 **Codex**（以及其它遵循 SKILL.md 规范的 agent）。下文提到具体工具名时，请按你当前所在的运行环境映射到等价能力，不要因为"没有叫这个名字的工具"就跳过步骤：
 
 - **联网搜索（统一走网关，别用自带 WebSearch）**：本技能的联网搜索**一律通过内置的 `scripts/web_search.py`（qianfan web search 网关）**，**不要**直接用 Claude Code 自带的 `WebSearch` 或 Codex 自带的联网搜索工具。这样搜索源可控、结果结构统一、跨 agent 环境行为一致。调用方式：`python3 "$SKILL_DIR/scripts/web_search.py" "搜索词" [--top N] [--json]`（密钥从技能目录 `.env` 的 `QIANFAN_WEBSEARCH_API_KEY` 读取，已随技能配好）。若网关报错/无密钥，如实告知用户无法获取实时数据，退回内部知识作研究依据，不要用记忆里的旧数据冒充实时情报，也不要偷偷改用自带 WebSearch。
-- **抓取网页正文**：Claude Code 用 `WebFetch`；Codex 用其网页读取能力。拿到 `web_search.py` 返回的 url 后，若需要读全文再用它抓取。
+- **抓取网页正文**：优先看 `web_search.py` 每条结果自带的 `content` 字段（网关已摘出约前 1000 字，判断相关性/快速扫风向足够）。需要读**完整全文**（网关 content 只有全文约两成、且从中间截断）时，用 `python3 "$SKILL_DIR/scripts/web_search.py" <url> --full [--max-chars N]` 本机直抓提纯——**不要用 Claude Code/Codex 自带的 WebFetch**：它跑在云端，对国内站（163/百家号/东方财富等）会系统性报"无法确认域名安全"而失败，本机抓取则没有这个问题。
 - **写文件**：Claude Code 用 `Write` 工具；Codex 直接用其文件写入能力（或 `apply_patch`）。凡说"用 Write 工具生成某文件"，即指"用当前环境的文件写入能力落地该文件"。生成产物 skill 时涉及的每一个文件（SKILL.md、各模块文档、脚本、配置）都要真实落地到磁盘，不能只在对话里描述。
 - **跑脚本**：两个环境都通过 shell 执行 `python3`。脚本路径见下方「脚本路径」——一律用技能目录的绝对路径，不要假设当前工作目录就是技能目录。
 
@@ -83,7 +83,7 @@ python3 "$SKILL_DIR/scripts/validate_skill.py" <生成的产物目录>
 
 拿到平台×垂类的组合后，双线并行展开研究：
 
-**联网研究（用 `scripts/web_search.py` 网关搜索，别用自带 WebSearch；拿到 url 后按需用 WebFetch 抓正文）**，围绕选定的平台和垂类，至少覆盖：
+**联网研究（用 `scripts/web_search.py` 网关搜索，别用自带 WebSearch；需要读全文时用 `--full` 本机抓正文，别用 WebFetch）**，围绕选定的平台和垂类，至少覆盖：
 
 - **受众画像**：这个垂类在该平台上的典型观众是谁、年龄画像、观看动机、常见困惑和期待
 - **当下爆款案例与共性**：搜近期该垂类在该平台的热门视频/账号，提炼选题角度、标题打法、封面风格的共性规律
